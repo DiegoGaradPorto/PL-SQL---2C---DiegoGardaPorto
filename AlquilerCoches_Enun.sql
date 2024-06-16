@@ -59,9 +59,74 @@ create table lineas_factura(
 create or replace procedure alquilar_coche(arg_NIF_cliente varchar,
   arg_matricula varchar, arg_fecha_ini date, arg_fecha_fin date) is
 -- declaraciones necesarias
+-- defino las variables locales que voy a utilizar en el procedimiento
+    v_precio_cada_dia modelos.precio_cada_dia%type;
+    v_nombre_modelo modelos.nombre%type;
+    v_dias integer;
+    v_importe_factura integer;
+    v_comprobacion_reservas integer;
+
 begin
   null;
   -- implementa aquí tu procedimiento
+  
+  -- 1: Comprobar que la fecha de inicio no es posterior a la fecha de fin
+  if arg_fecha_ini > arg_fecha_fin then 
+    raise_application_error(-20001, "No pueden realizarse alquileres por períodos inferiores a 1 día.");
+  end if; 
+  
+  -- 2: Obtener los datos del vehículo (modelo y precio) y verificar si existe
+  begin 
+    select m.precio_cada_dia, m.nombre
+    into v_precio_cada_dia, v_nombre_modelo
+    from vehiculos v
+    join modelos m on v.id_modelo = m.id_modelo
+    where v.matricula = arg_matricula
+    for update;
+  exception
+    when no_data_found then
+        raise_application_error(-20002, "Vehículo inexistente.");
+  end;
+  
+  -- 3: Verificar disponibilidad del coche para unas fechas determinadas
+  select count(*)
+  into v_comprobacion_reservas
+  from reservas r
+  where r.matricula = arg_matricula
+  and (
+    (arg_fecha_ini between r.fecha_ini and r.fecha_fin) or
+    (arg_fecha_fin between r-fecha_ini and r.fecha_fin)
+  );
+  
+  -- si nuestra reserva tiene fecha de inicio o de fin entre los intervalos de una reserva ya existente
+  -- significa que se solapan
+  if v_comprobacion_reservas > 0 then 
+    raise_application_error(-20003, "El vehículo no esta disponible para esas fechas.");
+  end if;
+  
+  -- 4: Insertar reserva y verificar que existe el cliente
+  begin 
+    insert into reservas values (seq_reservas.nextval, arg_NIF_cliente, arg_matricula, arg_fecha_ini, arg_fecha_fin)
+  exception
+    -- si el valor de arg_NIF_cliente no esta registrado en la base de datos salta una excepcion
+    when foreign_key_violation then 
+        raise_application_error(-20004, "Cliente inexistente");
+  end;
+  
+  -- 5: Crear factura y línea de factura
+  -- Calcular los valores de dias alquilados e importe total de dicho alquiler
+  v_dias := arg_fecha_fin - arg_fecha_ini + 1;
+  v_importe_factura := v_dias * v_precio_cada_dia;
+  
+  -- insert de los valores en la tabla facturas
+  insert into facturas values (seq_num_fact.nextval, v_importe_factura, arg_NIF_cliente);
+  
+  -- insert de los valores de la línea de factura
+  insert into lineas_facturas values (seq_num_fact.currval, v_dias || ' días de alquiler vehículo modelo ' || v_nombre_modelo, v_importe_factura);
+  
+  commit;
+  
+  
 end;
 /
 
@@ -126,9 +191,10 @@ exec inicializa_test;
 create or replace procedure test_alquila_coches is
 begin
 
-   --caso 1 Todo correcto
+   
   declare
-                                                                          
+  
+  --caso 1 Todo correcto                                                                        
   begin
     inicializa_test; 
     -- Implementa aquí tu test
@@ -177,3 +243,12 @@ end;
 
 set serveroutput on
 exec test_alquila_coches;
+
+-- Hacemos uso de SELECTS para ver el contenido de las tablas 
+select *  from clientes; 
+select *  from modelos; 
+select *  from vehiculos; 
+select *  from reservas; 
+select *  from facturas; 
+select *  from lineas_factura;
+
