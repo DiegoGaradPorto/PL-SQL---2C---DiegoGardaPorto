@@ -67,6 +67,9 @@ create or replace procedure alquilar_coche(arg_NIF_cliente varchar,
     v_comprobacion_reservas integer;
     
   -- definimos la excepcion para cliente inexistente
+  -- esta excepcion tiene el codigo -2291, que es el correspondiente a la excepcion relacionada con el incumplimiento
+  -- de las restricciones de la clave. 
+  -- Esta es la excepcion que salta cuando no existen los datos a los que nos referimos, en este caso en cuanto al NIF del cliente
   cliente_inexistente EXCEPTION;
   PRAGMA EXCEPTION_INIT(cliente_inexistente, -2291);
     
@@ -85,21 +88,27 @@ begin
     where v.matricula = arg_matricula
     for update;
   exception
+  --Si no nos devuelve ningun dato significa que el vehículo no existe
     when no_data_found then
         raise_application_error(-20002, 'Vehículo inexistente.');
   end;
   
   -- 3: Verificar disponibilidad del coche para unas fechas determinadas
+  -- buscamos cuantas filas hay que cumplan que haya una reserva dentro de otro
   select count(*)
   into v_comprobacion_reservas
   from reservas r
   where r.matricula = arg_matricula
   and (
+  --verificamos si la fecha de inicio esta dentro de otra reserva
     (arg_fecha_ini between r.fecha_ini and r.fecha_fin) or
+  --verificamos si la fecha de fin está dentro de otra reserva
     (arg_fecha_fin between r.fecha_ini and r.fecha_fin) or
+  --verificamos si tanto la fecha de inicio como la de fin están dentro de otra reserva
     (arg_fecha_ini <= r.fecha_ini and arg_fecha_fin >= r.fecha_fin)
   );
   
+  --si hay alguna fila de las anteriores significa que la fecha se está solapando con otra
   if v_comprobacion_reservas > 0 then 
     raise_application_error(-20003, 'El vehículo no está disponible para esas fechas.');
   end if;
@@ -113,13 +122,15 @@ begin
   end;
   
   -- 5: Crear factura y línea de factura
+  -- obtenemos los valores del número de días reservados y del coste total del alquiler del coche
   v_dias := arg_fecha_fin - arg_fecha_ini + 1;
   v_importe_factura := v_dias * v_precio_cada_dia;
   
+  -- insertamos la factura y la linea de facturas
   insert into facturas values (seq_num_fact.nextval, v_importe_factura, arg_NIF_cliente);
-  
   insert into lineas_factura values (seq_num_fact.currval, v_dias || ' días alquilado el modelo ' || v_nombre_modelo, v_importe_factura);
   
+  -- comieteamos la transacción 
   commit;
 end;
 /
