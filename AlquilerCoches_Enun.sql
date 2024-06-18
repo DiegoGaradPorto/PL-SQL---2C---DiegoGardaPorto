@@ -90,6 +90,7 @@ begin
   exception
   --Si no nos devuelve ningun dato significa que el vehículo no existe
     when no_data_found then
+        rollback;
         raise_application_error(-20002, 'Vehículo inexistente.');
   end;
   
@@ -110,6 +111,7 @@ begin
   
   --si hay alguna fila de las anteriores significa que la fecha se está solapando con otra
   if v_comprobacion_reservas > 0 then 
+    rollback;
     raise_application_error(-20003, 'El vehículo no está disponible para esas fechas.');
   end if;
   
@@ -118,6 +120,7 @@ begin
     insert into reservas values (seq_reservas.nextval, arg_NIF_cliente, arg_matricula, arg_fecha_ini, arg_fecha_fin);
   exception
     when cliente_inexistente then 
+        rollback;
         raise_application_error(-20004, 'Cliente inexistente');
   end;
   
@@ -132,6 +135,10 @@ begin
   
   -- comieteamos la transacción 
   commit;
+exception 
+    when others then 
+        rollback;
+        raise;
 end;
 /
 
@@ -421,4 +428,6 @@ Por ejemplo, primero he verificado si existe un vehículo. Si es así se ejecuta
 en caso contrario salta la excepción correspondiente.
 
 */
+
+
 
