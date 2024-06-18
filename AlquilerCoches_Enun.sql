@@ -373,9 +373,41 @@ Una vez acabe la transacción se libera el bloqueo y dicho vehículo ya puede se
 
 --P5b
 /*
+En el paso 4 se ejecuta un INSERT de una reserva en la tabla reservas con los datos del cliente, el vehículo
+y las fechas de inicio y de final del alquiler.
 
+Este INSERT sigue siendo válido para el paso 5, pues los datos de esa reserva son utilizados para crear 
+una factura en la tabla facturas con los datos del NIF del cliente, el vehículo y el número de días de la reserva. 
+
+Además también se creará una línea de facturacon los datos del nroFactura, el concepto y el importe (precio total del alquiler).
 
 */
 
+--P5c
+/*
+No, porque cuando se ejecuta de manera concurrente el método ALQUILAR_COCHE ya sea con los mismos valores o con diferentes
+se estudian los datos de estas reservas para ver si existen tanto el vehículo como el cliente y para ver si se solapan las reservas. 
 
+Estas reservas se estudian entre otros pasos, en el paso 4, por lo que si se llegan a añadir a la base de datos, serán las mismas 
+de las que se recogen en el SELECT. 
+
+Las reservas incompatibles se verían al realizar el estudio de los datos y no se añadirían, dando lugar a las correspondientes excepciones 
+en cada momento. 
+
+Por ejemplo si ejecutamos el procedimiento AQLUILAR_COCHE dos veces con los mismos datos, el sistema se daría cuenta de la incopatibilidad, 
+añadiría la primera reserva a la base de datos pero a la hora de intentar añadir la segunda se mostraría el mensaje de error de que dicho
+vehículo no está disponible para esas fechas (pues se solaparían).
+*/
+
+--P5d
+/*
+La estrategia de programación que he utilizado en este código ha sido una estrategia defensiva.
+
+Esto se puede ver en el código en que he realizado primero comprobaciones y verificaciones y posteriormente
+he llevado a cabo las operaciones. 
+
+Por ejemplo, primero he verificado si existe un vehículo. Si es así se ejecutan las acciones necesarias, 
+en caso contrario salta la excepción correspondiente.
+
+*/
 
