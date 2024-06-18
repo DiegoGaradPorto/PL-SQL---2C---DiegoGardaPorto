@@ -1,3 +1,6 @@
+-- ENLACE AL REPOSITORIO: 
+-- https://github.com/DiegoGaradPorto/PL-SQL---2C---DiegoGardaPorto
+
 drop table modelos            cascade constraints;
 drop table vehiculos        cascade constraints;
 drop table clientes         cascade constraints;
@@ -319,7 +322,7 @@ end;
 set serveroutput on;
 exec test_alquila_coches;
 
--- Llamamos al procedimiento alquilar_coche con diferentes tipos de reservas
+-- Llamamos al procedimiento alquilar_coche con diferentes tipos de reservas para hacer pruebas.
 
 -- CASO 1: Reservas correctas
 begin
@@ -428,6 +431,4 @@ Por ejemplo, primero he verificado si existe un vehículo. Si es así se ejecuta
 en caso contrario salta la excepción correspondiente.
 
 */
-
-
 
